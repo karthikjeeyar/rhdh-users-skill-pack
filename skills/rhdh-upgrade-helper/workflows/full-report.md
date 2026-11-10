@@ -11,6 +11,7 @@ Read these references before proceeding:
 - `references/env-vars.md` — known RHDH environment variables
 - `references/config-analysis.md` — how to parse config files
 - `references/rhdh-architecture.md` — what actually breaks vs. false positives
+- For target 2.1, `references/migration-2.1.md` — product migration checks for Helm, Operator, and RHDH Local deployments
 </required_reading>
 
 ## Step 0: Secrets Scan (MUST run before any analysis)
@@ -115,6 +116,8 @@ echo "$RELEASE_VERSIONS"
 
 **Major version handling (e.g., 1.x → 2.x):**
 
+- If the target is 2.1, read `references/migration-2.1.md` and correlate its checks with the customer's configuration regardless of deployment method. If Helm values are present, also run the chart migration workflow.
+- Preserve the existing FROM/TO and skipped-release behavior. The 2.1 migration reference records the unresolved skip-path assumption for team review.
 - If the major version differs between FROM and TO, flag this as a **major version upgrade** in the report header
 - Major version upgrades may introduce fundamental architecture changes (e.g., frontend system migration, backend system migration) — surface these prominently
 - If no branch exists for the target version yet (e.g., `2.0` before release), inform the user: "RHDH {version} has not been released yet. The overlay repo does not have a branch for this version. Try a released version."
@@ -193,24 +196,29 @@ For --from 1.8 --to 1.10, load 1.9.md and 1.10.md
 3. **If it does NOT exist:** Auto-fetch and convert:
 
 ```bash
-# Fetch raw release notes using lynx
-lynx -dump -nolist \
-  "https://docs.redhat.com/en/documentation/red_hat_developer_hub/{version}/html-single/red_hat_developer_hub_release_notes/index" \
-  > /tmp/rhdh-{version}-raw.txt
+# RHDH 2.1 release notes use a whats_new page; other versions retain the html-single URL.
+if [ "{version}" = "2.1" ]; then
+  RELEASE_NOTES_URL="https://docs.redhat.com/en/documentation/red_hat_developer_hub/2.1/whats_new-red_hat_developer_hub_release_notes"
+else
+  RELEASE_NOTES_URL="https://docs.redhat.com/en/documentation/red_hat_developer_hub/{version}/html-single/red_hat_developer_hub_release_notes/index"
+fi
+lynx -dump -nolist "$RELEASE_NOTES_URL" > /tmp/rhdh-{version}-raw.txt
 ```
 
 Then convert the raw text to a structured markdown file matching the format of existing files (e.g., `references/release-notes/1.10.md`). Strip navigation boilerplate (header links, sidebar, legal notice) and organize into these sections:
 
 - New features and enhancements
 - Technology Preview features
+- Developer Preview features
 - Deprecated features
 - Removed features (breaking changes)
 - Known issues
 - Fixed issues (upgrade-relevant only)
+- Security advisories (when listed in the official release notes)
 
-Save the result to `references/release-notes/{version}.md` so future runs skip the fetch.
+For 2.1, use `references/release-notes/2.1.md` and `references/migration-2.1.md` as the curated source. Save any other fetched result to `references/release-notes/{version}.md` so future runs skip the fetch.
 
-4. **If lynx is not available or the fetch fails:** Note the gap in the report: "Release notes for RHDH {version} could not be fetched automatically. Install lynx (`brew install lynx` / `dnf install lynx` / `apt install lynx`) or manually add the file per `references/release-notes/README.md`. Check <https://docs.redhat.com/en/documentation/red_hat_developer_hub/{version}> for the official release notes."
+4. **If lynx is not available or the fetch fails:** Note the gap in the report: "Release notes for RHDH {version} could not be fetched automatically. Install lynx (`brew install lynx` / `dnf install lynx` / `apt install lynx`) or manually add the file per `references/release-notes/README.md`. For 2.1, use <https://docs.redhat.com/en/documentation/red_hat_developer_hub/2.1/whats_new-red_hat_developer_hub_release_notes>; for other versions, check <https://docs.redhat.com/en/documentation/red_hat_developer_hub/{version}>."
 
 ### 4d: Build plugin metadata index and resolve all plugin references
 
@@ -318,11 +326,11 @@ If `$CONFIG_ANALYSIS` was produced (config-path mode), merge `migration_issues` 
 
 ### 5c: Classify severity
 
-Each finding gets a severity:
+Each finding gets a severity. Use `references/migration-2.1.md` for target 2.1 and preserve its evidence and deprecation guidance:
 
 - **Critical:** Runtime failure if not fixed before upgrade (removed plugin, broken auth, missing OCI reference)
 - **Important:** Degraded experience if not fixed soon after upgrade (deprecated API, changed default, version mismatch)
-- **Informational:** Awareness only (new feature available, minor deprecation with no immediate impact)
+- **Informational:** Awareness only (new feature available, minor deprecation with no immediate impact). For 2.1, `disabled`→`enabled` is Informational, must mention the announced deprecation and later-release migration, and does not reduce readiness.
 
 ## Step 6: Compute Readiness Score
 

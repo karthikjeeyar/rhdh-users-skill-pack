@@ -93,7 +93,7 @@ Map to: `environment.scm_integrations` (array of strings).
 > Which of these RHDH features do you use? (select all that apply)
 >
 > 1. Orchestrator (serverless workflows)
-> 2. Lightspeed / AI assistant
+> 2. Intelligent Assistant (formerly Developer Lightspeed)
 > 3. RBAC (role-based access control)
 > 4. TechDocs
 > 5. Bulk Import
@@ -121,7 +121,7 @@ Use this to scope the product context query to relevant workspaces:
 | Feature (from Q6) | Overlay Workspace(s) |
 |-------------------|---------------------|
 | Orchestrator | `orchestrator` |
-| Lightspeed / AI | `lightspeed` |
+| Intelligent Assistant / Developer Lightspeed | `lightspeed` (verify target-release metadata for the configured plugins) |
 | RBAC | `rbac` |
 | TechDocs | `backstage` (techdocs plugins) |
 | Bulk Import | `bulk-import` |

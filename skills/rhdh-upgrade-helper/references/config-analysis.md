@@ -70,7 +70,7 @@ For every config file (whether discovered by directory scan or provided individu
 
 When a file matches multiple markers (e.g., Helm values contain `auth:` under `upstream.backstage.appConfig`), use the most specific match. `global.dynamic.plugins` or `upstream.backstage` → Helm values (1.y) takes precedence.
 
-**1.y vs 2.y Helm values detection:** If a values file contains `upstream.backstage` or `global.dynamic.plugins`, it is 1.y format. If it contains top-level `dynamicPlugins` without the `global.dynamic` or `upstream` wrapper, it is 2.y format. When a 1.y values file is detected and the target release is 2.y (currently only 1.10 → 2.1 is supported), the skill should route through `workflows/chart-migration.md` to migrate the values structure before proceeding with plugin and config analysis.
+**1.y vs 2.y Helm values detection:** If a values file contains `upstream.backstage` or `global.dynamic.plugins`, it is 1.y format. If it contains top-level `dynamicPlugins` without the `global.dynamic` or `upstream` wrapper, it is 2.y format. When a 1.y values file is detected and the target release is 2.1, route through `workflows/chart-migration.md` for chart structure migration. The product migration checks in `references/migration-2.1.md` also apply to Operator, RHDH Local, and other non-Helm deployments.
 
 ## Merging Multiple App-Config Files
 
@@ -400,6 +400,20 @@ Capture as `$CONFIG_ANALYSIS`:
   }
 }
 ```
+
+## RHDH 2.1 Migration Checks
+
+For a 2.1 target, read `references/migration-2.1.md` and inspect relevant customer inputs across app-config, dynamic-plugin config, Helm values, Backstage CR references, and environment files. Detect only configured signals; do not report unrelated product changes as affecting the customer.
+
+At minimum, check for:
+
+- Removed `./dynamic-plugins/dist/` wrappers and target artifact changes using Package entity metadata.
+- Legacy NFS selectors and `dynamicPlugins.frontend`; compare each configured `auth.providers.<id>` with its enabled dynamic backend provider, and check auxiliary providers for `disableIdentityResolution`.
+- `lightspeed.*` RBAC permissions, Developer Lightspeed keys/routes, and `disabled` plugin flags.
+- Removed or renamed plugins, Scorecard metric-provider keys/metric IDs (excluding `scorecard.plugins.filecheck`), and legacy TechDocs add-on wiring under `dynamicPlugins.frontend`.
+- Product image references against the 2.1 rename table (including the RHEL 9 exceptions), RAG content image references, Operator multi-entry app-config ConfigMaps where ordering matters, PostgreSQL chart settings, and known network-policy dependencies.
+
+For `disabled`→`enabled`, create only an Informational deprecation finding: state that migration is expected in a later release (2.3), do not rewrite the entry, and do not count it in readiness deductions. Do not change the existing FROM/TO skip-version resolution or release-range logic; the unresolved 2.1 skip-path assumption is documented in `references/migration-2.1.md` for team review.
 
 ## Severity Rules
 

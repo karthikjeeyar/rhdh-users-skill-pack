@@ -10,6 +10,7 @@ Read these references before proceeding:
 - [Upstream migration guide](https://github.com/redhat-developer/rhdh-chart/blob/release-2.1/charts/rhdh/docs/migration-from-backstage-chart.md) — authoritative mapping tables, behavioral changes, chart-managed defaults inventory, before/after YAML examples
 - `references/chart-migration-1y-2y.md` — ambiguous area transformation algorithms, `.Values.*` rewriting rules, decomposed fields (skill-specific metadata not in the upstream guide)
 - `references/secrets-detection.md` — secret scanning patterns
+- For target 2.1, `references/migration-2.1.md` — product changes that apply to all deployment methods
 - `references/output-format.md` — report template (for the final combined report)
 </required_reading>
 
@@ -17,8 +18,9 @@ Read these references before proceeding:
 
 1. Confirm this is a major version upgrade: the RHDH major version in `--from` differs
    from `--to` (e.g., 1.10 → 2.1).
-2. Note the prerequisite: Kubernetes 1.31+ / OpenShift 4.18+.
-3. Identify the Helm values file to migrate. Sources (in priority order):
+2. Note the prerequisite: Kubernetes 1.32+ / OpenShift 4.19+.
+3. For 2.1, an in-place `helm upgrade` is supported; uninstalling the 1.y release is not required.
+4. Identify the Helm values file to migrate. Sources (in priority order):
    - `--config` flag pointing to a values.yaml
    - `.rhdh-upgrade-helper.yaml` config listing a values file
    - `--config-path` directory scan finding a `values*.yaml`
@@ -218,32 +220,39 @@ have no remaining `MIGRATION-REVIEW` markers.
 
 Regardless of whether ambiguous areas existed, warn about behavioral changes:
 
-1. **PostgreSQL default version**: If the user's values don't explicitly set
-   `postgresql.image.tag`, warn: "The default PostgreSQL image changed from v15 to v18.
-   If you have an existing data directory, add `postgresql.image.tag: '<your-current-version>'`
-   to avoid data compatibility issues."
+1. **PostgreSQL default version**: If chart-managed PostgreSQL is enabled, its default changes
+   from PostgreSQL 15 to 18. If the customer must retain PostgreSQL 15 for an existing data
+   directory, recommend setting
+   `postgresql.image.repository: rhel10/postgresql-15` and overriding the image digest for that
+   repository. Do not recommend `postgresql.image.tag` for this pin. If the data-directory version
+   is unknown, require confirmation before upgrade.
 
-2. **HPA maxReplicas default**: If autoscaling is enabled and `maxReplicas` is not explicitly
+2. **Intelligent Assistant default**: If `intelligentAssistant.enabled` is omitted, inform the
+   customer that Intelligent Assistant is enabled by default in the 2.1 chart. The sidecar image
+   remains `lightspeed-stack-rhel9`; confirm whether the default enablement is intended, but do not
+   change it automatically.
+
+3. **HPA maxReplicas default**: If autoscaling is enabled and `maxReplicas` is not explicitly
    set, warn: "The default maxReplicas changed from 100 to 3."
 
-3. **Database env vars**: If the user had `POSTGRESQL_ADMIN_PASSWORD` in `extraEnvVars`,
+4. **Database env vars**: If the user had `POSTGRESQL_ADMIN_PASSWORD` in `extraEnvVars`,
    note it should be `POSTGRES_PASSWORD` now.
 
-4. **Image digest/tag interaction**: If the user's values set a custom `image.tag` (or any
+5. **Image digest/tag interaction**: If the user's values set a custom `image.tag` (or any
    `*.image.tag`), warn: "The downstream chart ships images with explicit digests by default.
    When both tag and digest are set, the chart renders `tag@digest`, which can fail to resolve
    at pull time if they don't match (the chart's default digest is merged by Helm). When
    overriding with a tag, either set `digest: ""` to clear the default, or set `digest` to
    the correct digest for your tag."
 
-5. **Air-gapped / disconnected environments**: If `global.imageRegistry` is set, note:
+6. **Air-gapped / disconnected environments**: If `global.imageRegistry` is set, note:
    "`global.imageRegistry` and `global.imagePullSecrets` apply to all chart-managed container
    images (RHDH, PostgreSQL, catalog index, etc.), but do NOT apply to dynamic plugin
    references (`oci://` or `ref://` in `dynamicPlugins.plugins`). Plugin OCI images must be
    mirrored separately and their references updated individually in your dynamic plugins
    configuration."
 
-6. **Schema validation**: Recommend running `helm template` before upgrading.
+7. **Schema validation**: Recommend running `helm template` before upgrading.
    If multiple values files were migrated, pass them in the same order the customer
    used with the 1.y chart (Helm merges values files in order — last wins).
 
@@ -259,10 +268,9 @@ Regardless of whether ambiguous areas existed, warn about behavioral changes:
 
 After chart migration, always run `workflows/full-report.md` with the **migrated**
 values file(s) as input (alongside any other config files the user provided, such as
-app-config.yaml or dynamic-plugins.yaml). This produces the standard upgrade assessment
-(plugin analysis, release notes correlation, readiness scoring) combined with the chart
-migration results — so one invocation gives the user both the Helm migration actions and
-the full release guidance.
+app-config.yaml or dynamic-plugins.yaml). For target 2.1, the full report must also load
+`references/migration-2.1.md`; this product guidance applies to Helm and non-Helm deployments.
+This combines the chart migration actions with the full release guidance.
 
 The migrated values file contains plugin config, auth settings, and other fields the
 full-report workflow needs. MIGRATION-REVIEW comment markers are YAML comments and do
