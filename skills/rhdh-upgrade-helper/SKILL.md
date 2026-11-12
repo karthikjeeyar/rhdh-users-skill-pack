@@ -55,13 +55,15 @@ All config files are scanned for embedded secrets before processing. See `refere
 <routing>
 | Condition | Workflow |
 |-----------|----------|
-| Major version upgrade (`--from` 1.y, `--to` 2.y) with Helm values file | `workflows/chart-migration.md` (chart values migration + upgrade assessment) |
+| Target is RHDH 2.1 and Helm values are present | `workflows/chart-migration.md`, then `workflows/full-report.md` with `references/migration-2.1.md` |
+| Target is RHDH 2.1 without Helm values | `workflows/full-report.md` with `references/migration-2.1.md`; use interactive intake if config files are absent |
+| Other major version upgrade with Helm values | `workflows/chart-migration.md` (chart values migration + upgrade assessment) |
 | Config files resolved (via `.rhdh-upgrade-helper.yaml`, `--config`, or `--config-path`) | `workflows/full-report.md` (config-driven assessment) |
 | No config files resolved | `workflows/interactive.md` (ask intake questions, then assess) |
 | "help", "explain", "how" | `workflows/help.md` |
 
 **`--to` is always required.** If omitted, prompt for it before routing. `.rhdh-upgrade-helper.yaml` may provide it.
-**Major version detection:** If the major version differs between `--from` and `--to` (e.g., 1.10 → 2.1) and a Helm values file is provided, route to `workflows/chart-migration.md` first. This handles chart values restructuring, then optionally runs `workflows/full-report.md` for the full upgrade assessment.
+**RHDH 2.1 routing:** Always load `references/migration-2.1.md` for a 1.x → 2.1 assessment, regardless of deployment method. If Helm values are present, run `workflows/chart-migration.md` first and then the full assessment; otherwise use `workflows/full-report.md` (or interactive intake when no config files are available). For other major upgrades with Helm values, use the chart workflow before the full assessment. Preserve the existing `--from` and skip-version behavior.
 **When no config files are resolved, always route to `workflows/interactive.md` — never produce a generic report without gathering environment context first.**
 </routing>
 
@@ -79,6 +81,7 @@ All config files are scanned for embedded secrets before processing. See `refere
 | `references/config-analysis.md` | How to parse customer config files — content-based auto-detection for Helm values, app-config, dynamic-plugins, and Backstage CR. |
 | `references/rhdh-architecture.md` | RHDH architecture context — what actually breaks on upgrade vs. common false positives. |
 | `references/chart-migration-1y-2y.md` | Chart values migration tables for 1.y→2.y: deterministic mappings, ambiguous areas, behavioral changes, removed/new values. |
+| `references/migration-2.1.md` | RHDH 2.1 product migration checks for all deployment methods; load for every 1.x→2.1 assessment. |
 | `references/release-notes/{X.Y}.md` | Per-release notes (new features, breaking changes, deprecated/removed features, known issues). One file per release. |
 </reference_index>
 
@@ -86,7 +89,7 @@ All config files are scanned for embedded secrets before processing. See `refere
 
 | Workflow | Purpose | Data Sources Used |
 |----------|---------|-------------------|
-| `workflows/chart-migration.md` | AI-assisted chart values migration for 1.y→2.y upgrades | Migration script + chart-migration-1y-2y reference + AI resolution |
+| `workflows/chart-migration.md` | AI-assisted chart values migration for 1.y→2.y upgrades; for 2.1, run before the product assessment | Migration script + chart-migration-1y-2y reference + AI resolution |
 | `workflows/full-report.md` | Config-driven upgrade assessment with line-level migration steps | Config analysis + product context |
 | `workflows/interactive.md` | Guided Q&A to build environment profile, then runs full assessment | Intake questions + product context |
 | `workflows/help.md` | Explain the skill and its capabilities | None |
@@ -144,5 +147,6 @@ The report is complete when:
 - "Does NOT Affect You" section included to reduce upgrade anxiety
 - RHDH Local recommended for pre-upgrade testing per `references/rhdh-local.md`
 - Upgrade checklist provided at end of report
-- For major version upgrades: chart values migration completed via `workflows/chart-migration.md`, all ambiguous areas resolved with user confirmation, migrated values file validated with `helm template`
+- For RHDH 2.1: `references/migration-2.1.md` was applied to the customer's environment for any deployment method
+- For major Helm upgrades: chart values migration completed via `workflows/chart-migration.md`, all ambiguous areas resolved with user confirmation, migrated values file validated with `helm template`
 </success_criteria>

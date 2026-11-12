@@ -26,7 +26,7 @@ Analyzes your RHDH configuration against a target release and produces a persona
 - Searches RHDHBUGS Jira per-plugin for known bugs affecting your versions
 - Filters breaking changes into "Affects You" vs "Does NOT Affect You"
 - Computes a 0-100 Readiness Score with transparent breakdown
-- Includes bundled release notes for RHDH 1.4–1.10
+- Includes bundled release notes for RHDH 1.4–1.10 and 2.1, with a deployment-agnostic 2.1 migration reference
 
 See [rhdh-upgrade-helper](./skills/rhdh-upgrade-helper/SKILL.md) for the full skill definition.
 
@@ -42,6 +42,7 @@ Example prompts:
 - "Analyze my values.yaml for upgrading from RHDH 1.8 to 1.10"
 - "Migrate my Helm values from RHDH 1.10 to 2.1"
 - "What breaks if I upgrade to RHDH 1.10?"
+- "Assess my Operator deployment for an upgrade to RHDH 2.1"
 - "Run an upgrade assessment on my rhdh-local project"
 
 ## rhdh-templates

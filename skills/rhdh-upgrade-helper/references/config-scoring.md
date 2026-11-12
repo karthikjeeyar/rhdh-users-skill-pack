@@ -8,14 +8,16 @@ Start at 100 and subtract points for each finding category. The base score canno
 
 | Category | Max Deduction | How to Compute |
 |----------|---------------|----------------|
-| Breaking config keys | -25 | Count deprecated/removed config keys found in customer's `app-config.yaml`. 1-2 keys = -5, 3-5 = -10, 6-10 = -15, 11+ = -25. |
+| Breaking config keys | -25 | Count evidence-backed deprecated or changed configuration items found across the customer's supplied config sources (including app-config, dynamic-plugin config, Helm values, and environment files). This includes applicable 2.1 migrations such as NFS, auth, RBAC, Scorecard, and confirmed network-policy dependencies. 1-2 items = -5, 3-5 = -10, 6-10 = -15, 11+ = -25. |
 | Artifact-source migrations | -25 | Count configured plugin references whose source type (local, OCI, or NPM) differs from the target Package entity's `spec.dynamicArtifact`, plus unresolved references. Do not count a local path whose target `spec.dynamicArtifact` is the same bundled local path, or an OCI tag that only needs a version update. 1-2 = -10, 3-5 = -15, 6+ = -25. |
 | Backstage version jump | -15 | Minor versions between `--from` and `--to` Backstage versions. 0-1 = 0, 2-3 = -5, 4-5 = -10, 6+ = -15. |
 | Node.js version jump | -10 | Compare Node.js major versions. Same major = 0, +1 major = -5, +2 major = -10. |
 | Auth provider compatibility | -15 | Auth resolver changes between releases that affect the customer's configured providers. Each affected provider = -5, capped at -15. |
 | Custom plugins | -10 | Plugins in customer's config NOT in target release's `default.packages.yaml`. 1-2 = -3, 3-5 = -5, 6+ = -10. These need manual version compatibility checks. |
 | Chart value key migrations | -20 | Major version upgrade only. Count of ambiguous areas in the user's config that required AI-assisted resolution. 0 = 0, 1-2 = -5, 3-4 = -10, 5+ = -20. |
-| Major chart restructuring | -15 | Flat penalty when the RHDH major version differs (values structure changed from nested subchart layout to flat root-level keys). |
+| Major chart restructuring | -15 | Apply only when the customer is migrating Helm values from the 1.y chart structure to 2.y. Do not apply this chart-only penalty to Operator or RHDH Local deployments; score their observed product configuration and artifact findings under the applicable existing categories. |
+
+Count each distinct finding once, under its most specific category: auth-provider findings use Auth provider compatibility, and plugin artifact transitions use Artifact-source migrations rather than Breaking config keys. Do not deduct for Informational deprecations.
 
 **Formula:** `base = max(0, 100 - sum(deductions))`
 
@@ -29,7 +31,7 @@ Amplifiers reduce the base score further. Each amplifier applies a percentage re
 | Deprecated auth resolver | -20% | Customer's auth config uses a resolver name deprecated between releases. Login may fail after upgrade. |
 | Large plugin version jump | -15% each | A configured plugin has 3+ minor version jump between releases. Higher chance of breaking API changes. Max 2 plugins counted. |
 | Support level downgrade | -10% each | A configured plugin's support level dropped (e.g., `generally-available` → `tech-preview` or `community`). |
-| Removed chart values | -15% each | A chart value the customer uses has no 2.y equivalent (`installDir`, `containerPorts.backend`, `diagnosticMode`). |
+| Removed chart values | -15% each | A Helm customer uses a chart value with no 2.y equivalent (`installDir`, `containerPorts.backend`, `diagnosticMode`). Do not apply to non-Helm deployments. |
 
 **Formula:** `amplifier_penalty = base * (1 - 1/(1 + sum(amplifier_rates)))`
 
@@ -80,4 +82,4 @@ In the report body, include the full breakdown:
 **Score: {final}/100 — {label}**
 ```
 
-Every deduction must trace to a specific finding from the config analysis or product context. No opaque scores.
+Every deduction must trace to a specific finding from the config analysis or product context. Informational deprecations, including the RHDH 2.1 `disabled`→`enabled` notice, do not incur deductions. No opaque scores.
