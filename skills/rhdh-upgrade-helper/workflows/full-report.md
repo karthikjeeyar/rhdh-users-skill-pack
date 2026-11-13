@@ -203,32 +203,39 @@ For --from 1.8 --to 1.10, load 1.9.md and 1.10.md
 
 1. **Check if the file exists:** `references/release-notes/{version}.md`
 2. **If it exists:** Read it and continue.
-3. **If it does NOT exist:** Auto-fetch and convert:
+3. **If it does NOT exist:** generate it.
 
-```bash
-# RHDH 2.1 release notes use a whats_new page; other versions retain the html-single URL.
-if [ "{version}" = "2.1" ]; then
-  RELEASE_NOTES_URL="https://docs.redhat.com/en/documentation/red_hat_developer_hub/2.1/whats_new-red_hat_developer_hub_release_notes"
-else
-  RELEASE_NOTES_URL="https://docs.redhat.com/en/documentation/red_hat_developer_hub/{version}/html-single/red_hat_developer_hub_release_notes/index"
-fi
-lynx -dump -nolist "$RELEASE_NOTES_URL" > /tmp/rhdh-{version}-raw.txt
-```
+   For 2.x and later, run the bundled generator. It reads the release-notes landing page, follows every section link, and writes the file in the required format:
 
-Then convert the raw text to a structured markdown file matching the format of existing files (e.g., `references/release-notes/1.10.md`). Strip navigation boilerplate (header links, sidebar, legal notice) and organize into these sections:
+   ```bash
+   uv sync --extra release-notes
+   python "$SKILL_DIR/scripts/generate-release-notes.py" --release {version}
+   ```
 
-- New features and enhancements
-- Technology Preview features
-- Developer Preview features
-- Deprecated features
-- Removed features (breaking changes)
-- Known issues
-- Fixed issues (upgrade-relevant only)
-- Security advisories (when listed in the official release notes)
+   Do not hand-write 2.x notes. If `uv` or the optional extra is unavailable, go to step 4 and report the gap.
 
-For 2.1, use `references/release-notes/2.1.md` and `references/migration-2.1.md` as the curated source. Save any other fetched result to `references/release-notes/{version}.md` so future runs skip the fetch.
+   For 1.x, fetch the single-page notes and convert them by hand:
 
-4. **If lynx is not available or the fetch fails:** Note the gap in the report: "Release notes for RHDH {version} could not be fetched automatically. Install lynx (`brew install lynx` / `dnf install lynx` / `apt install lynx`) or manually add the file per `references/release-notes/README.md`. For 2.1, use <https://docs.redhat.com/en/documentation/red_hat_developer_hub/2.1/whats_new-red_hat_developer_hub_release_notes>; for other versions, check <https://docs.redhat.com/en/documentation/red_hat_developer_hub/{version}>."
+   ```bash
+   lynx -dump -nolist \
+     "https://docs.redhat.com/en/documentation/red_hat_developer_hub/{version}/html-single/red_hat_developer_hub_release_notes/index" \
+     > /tmp/rhdh-{version}-raw.txt
+   ```
+
+   Then strip navigation boilerplate and organize the text into these sections:
+
+   - New features and enhancements
+   - Technology Preview features
+   - Developer Preview features
+   - Deprecated features
+   - Removed features (breaking changes)
+   - Known issues
+   - Fixed issues (upgrade-relevant only)
+   - Security advisories (when listed in the official release notes)
+
+   For 2.1, `references/release-notes/2.1.md` and `references/migration-2.1.md` are already bundled; always read `migration-2.1.md` alongside the generated notes, because deployment-specific guidance (Operator channels, chart migration, skip-version constraints) lives there rather than in the public release notes.
+
+4. **If the fetch fails:** Note the gap in the report: "Release notes for RHDH {version} could not be fetched automatically. For 2.x, run `scripts/generate-release-notes.py --release {version}` (needs `uv sync --extra release-notes`); docs.redhat.com rejects plain HTTP clients, so the generator uses Chrome TLS impersonation. For 1.x, install lynx or add the file per `references/release-notes/README.md`. Source pages: <https://docs.redhat.com/en/documentation/red_hat_developer_hub/{version}>."
 
 ### 4d: Build plugin metadata index and resolve all plugin references
 
